@@ -1,0 +1,8 @@
+*.swp
+*.swo
+tags
+
+*.o
+*.out
+
+repl
