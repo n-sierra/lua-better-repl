@@ -45,9 +45,19 @@ int main(int argc, char **argv) {
   g_words = NULL;
   g_quit = 0;
 
+  if(2 <= argc) {
+    // exec argv[1]
+    lua_getglobal(L, "dofile");
+    lua_pushstring(L, argv[1]);
+
+    if(lua_pcall(L, 1, 0, 0)) {
+      err(L);
+    }
+  }
+
   while(g_quit == 0) {
     // read
-    line = readline(">");
+    line = readline("lua>");
 
     // eval
     error_load = 0;
@@ -64,12 +74,8 @@ int main(int argc, char **argv) {
       free(p);
     }
 
-    if(error_load) {
+    if(error_load || lua_pcall(L, 0, LUA_MULTRET, 0)) {
       err(L);
-    } else {
-      if(lua_pcall(L, 0, LUA_MULTRET, 0)) {
-        err(L);
-      }
     }
 
     // print
@@ -87,6 +93,8 @@ int main(int argc, char **argv) {
   }
 
   xfree(g_words);
+
+  lua_close(L);
 
   return 0;
 }
