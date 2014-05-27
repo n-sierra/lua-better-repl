@@ -122,10 +122,10 @@ int cf_ls(lua_State *L) {
   int n = lua_gettop(L);
 
   if(n == 0) {
-    // no arguments => global variables
+    // no arguments => list global variables
     lua_pushvalue(L, LUA_GLOBALSINDEX);
   } else if(n == 1 && lua_type(L, -1) == LUA_TTABLE) {
-    // 1 argument => the argument
+    // 1 argument => list keys of the argument
     ;
   } else {
     // 2+ arguments => error
@@ -133,18 +133,24 @@ int cf_ls(lua_State *L) {
     return lua_error(L);
   }
 
-  // get the number of eitries in table
+  // print string keys in the table
   lua_pushnil(L);
   while(lua_next(L, -2) != 0) {
     // dupe key
     lua_pushvalue(L, -2);
+
+    // only strings are accepted after '.' (dot)
     if(lua_type(L, -1) != LUA_TSTRING) {
       lua_pop(L, 2);
       continue;
     }
+
+    // print key and type of value
     printf("%-10s %s\n",
         lua_typename(L, lua_type(L, -2)),
         lua_tostring(L, -1));
+
+    // pop duped key and value
     lua_pop(L, 2);
   }
 
@@ -213,9 +219,7 @@ char** make_words(lua_State *L) {
   lua_pushnil(L);
   while(lua_next(L, -2) != 0) {
     size++;
-    // dupe key
-    lua_pushvalue(L, -2);
-    lua_pop(L, 2);
+    lua_pop(L, 1);
   }
 
   // allocate memory for matches
