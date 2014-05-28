@@ -21,9 +21,6 @@ int cf_ls(lua_State *L);
 char** repl_completion(const char* text, int start, int end);
 char* repl_match_generator(const char* text, int state);
 
-char** make_words(lua_State *L);
-char** make_words_table(lua_State *L, const char *text, int start, int end);
-
 char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*));
 int is_key_string(lua_State *L);
 
@@ -308,6 +305,7 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
     lua_pushvalue(L, -3); // dupe key
     lua_call(L, 1, 1);
     keyname = lua_tostring(L, -1);
+
     // cands[i] <- $prefix + $name
     len_keyname = strlen(keyname);
     cands[i] = (char*)malloc((len_prefix+len_keyname+1)*sizeof(char*));
@@ -316,7 +314,6 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
       xfree_array(cands);
       return NULL;
     }
-
     strncpy(cands[i],            prefix,  len_prefix);
     strncpy(cands[i]+len_prefix, keyname, len_keyname+1);
 
