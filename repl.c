@@ -226,6 +226,7 @@ err:
   return matches;
 }
 
+// iterator for generating each match
 char* repl_match_generator(const char *text, int state) {
   static int index, len;
   char *name;
