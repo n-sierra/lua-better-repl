@@ -12,6 +12,7 @@ lua_State *g_state;
 char **g_cands;
 int g_quit;
 
+void eval(lua_State *L, const char* code);
 void err(lua_State *L);
 
 int cf_quit(lua_State *L);
@@ -32,7 +33,6 @@ void xfree_array(char **array);
 int main(int argc, char **argv) {
   char *line;
   lua_State *L;
-  int error_load;
 
   // initialize lua
   L = luaL_newstate();
@@ -45,10 +45,12 @@ int main(int argc, char **argv) {
   rl_basic_word_break_characters = " \t\n\"+-*/^%><=|;,{(#";
   rl_attempted_completion_function = repl_completion;
 
+  // initialize global variables
   g_state = L;
   g_cands = NULL;
   g_quit = 0;
 
+  // prepare
   if(2 <= argc) {
     // exec argv[1]
     lua_getglobal(L, "dofile");
@@ -64,29 +66,7 @@ int main(int argc, char **argv) {
     line = readline("lua> ");
 
     // eval
-    error_load = 0;
-    if(luaL_loadstring(L, line)) {
-      char *p;
-      p = (char*)malloc(strlen(line)*sizeof(char)+sizeof("return "));
-      if(!p) {
-        lua_pop(L, 1);
-        lua_pushstring(L, "memory allocate error");
-        error_load = 1;
-      } else {
-        sprintf(p, "return %s", line);
-        if(luaL_loadstring(L, p)) {
-          lua_pop(L, 1);
-          error_load = 1;
-        } else {
-          lua_remove(L, lua_gettop(L)-1);
-        }
-        xfree(p);
-      }
-    }
-
-    if(error_load || lua_pcall(L, 0, LUA_MULTRET, 0)) {
-      err(L);
-    }
+    eval(L, line);
 
     // print
     if(0 < lua_gettop(L)) {
@@ -107,12 +87,55 @@ int main(int argc, char **argv) {
   return 0;
 }
 
+// eval $code on lua
+void eval(lua_State *L, const char* code) {
+  int error_load;
+  char *p;
+
+  // load chunk
+  error_load = 0;
+  if(luaL_loadstring(L, code)) {
+    // stack[top]  <string: error_reason>
+    // try to load "return ***" if the first loading failed
+    p = (char*)malloc(strlen(code)*sizeof(char)+sizeof("return "));
+    if(!p) {
+      lua_pop(L, 1); // pop error reason
+      lua_pushstring(L, "memory allocate error"); // new error reason
+      error_load = 1;
+    } else {
+      sprintf(p, "return %s", code);
+      // load "return ***"
+      if(luaL_loadstring(L, p)) {
+        // stack[top]    <new error>
+        // stack[top-1]  <old error>
+        lua_pop(L, 1);
+        error_load = 1;
+      } else {
+        lua_remove(L, -2); // remove the first error
+      }
+      xfree(p);
+    }
+  }
+
+  // execute chunk unless load failed
+  if(error_load || lua_pcall(L, 0, LUA_MULTRET, 0)) {
+    err(L);
+  }
+
+  return;
+}
+
+// - precondition
+// top of stack contains string with error reason
+// - postcondition
+// remove top of stack
 void err(lua_State *L) {
   const char *p = lua_tostring(L, -1);
   printf("[pcall-err] %s\n", p);
   lua_pop(L, 1);
 }
 
+// quit repl
 int cf_quit(lua_State *L) {
   int n = lua_gettop(L);
 
@@ -126,6 +149,7 @@ int cf_quit(lua_State *L) {
   return 0;
 }
 
+// print global variables or keys in a table
 int cf_ls(lua_State *L) {
   int n = lua_gettop(L);
   char** cands;
@@ -161,6 +185,7 @@ int cf_ls(lua_State *L) {
   return 0;
 }
 
+// create matches for completion
 char** repl_completion(const char *text, int start, int end) {
   char **matches = NULL;
   char *tablename, *prefix;
@@ -309,6 +334,7 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
   return cands;
 }
 
+// return 1 if stack-top is string
 int is_key_string(lua_State *L) {
   // stack[top]     value
   // stack[top-1]   key
@@ -321,6 +347,7 @@ int is_key_string(lua_State *L) {
   return 0;
 }
 
+// free $obj
 void xfree(void *obj) {
   if(obj) {
     free(obj);
@@ -328,6 +355,7 @@ void xfree(void *obj) {
   return;
 }
 
+// free $array and its elements
 void xfree_array(char **array) {
   char **p = array;
   if(array) {
