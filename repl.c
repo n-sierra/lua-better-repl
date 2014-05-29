@@ -24,8 +24,9 @@ char* repl_match_generator(const char* text, int state);
 char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*));
 int is_key_string(lua_State *L);
 
-void xfree(void *obj);
-void xfree_array(char **array);
+void* xxmalloc(size_t size);
+void xxfree(void *p);
+void xxfree_array(char **array);
 
 int main(int argc, char **argv) {
   char *line;
@@ -76,7 +77,7 @@ int main(int argc, char **argv) {
 
     add_history(line);
 
-    xfree(line);
+    xxfree(line);
   }
 
   lua_close(L);
@@ -94,7 +95,7 @@ void eval(lua_State *L, const char* code) {
   if(luaL_loadstring(L, code)) {
     // stack[top]  <string: error_reason>
     // try to load "return ***" if the first loading failed
-    p = (char*)malloc(strlen(code)*sizeof(char)+sizeof("return "));
+    p = (char*)xxmalloc(strlen(code)*sizeof(char)+sizeof("return "));
     if(!p) {
       lua_pop(L, 1); // pop error reason
       lua_pushstring(L, "memory allocate error"); // new error reason
@@ -110,7 +111,7 @@ void eval(lua_State *L, const char* code) {
       } else {
         lua_remove(L, -2); // remove the first error
       }
-      xfree(p);
+      xxfree(p);
     }
   }
 
@@ -177,7 +178,7 @@ int cf_ls(lua_State *L) {
     i++;
   }
 
-  xfree_array(cands);
+  xxfree_array(cands);
 
   return 0;
 }
@@ -201,18 +202,18 @@ char** repl_completion(const char *text, int start, int end) {
     p = strchr(tablename, '.');
     *p = '\0';
     prefix = strdup(text);
-    if(!prefix) { xfree(tablename); goto err; }
+    if(!prefix) { xxfree(tablename); goto err; }
     p = strchr(prefix, '.');
     *(p+1) = '\0';
     lua_getglobal(L, tablename);
     g_cands = make_cands(L, prefix, is_key_string);
-    xfree(tablename);
-    xfree(prefix);
+    xxfree(tablename);
+    xxfree(prefix);
   }
 
   matches = rl_completion_matches(text, repl_match_generator);
 
-  xfree_array(g_cands);
+  xxfree_array(g_cands);
 
 err:
   // dont perform default filename completion
@@ -260,7 +261,7 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
   // stack[top]: data
   // if non-table or undefined, return an array with NULL
   if(lua_type(L, -1) != LUA_TTABLE) {
-    cands = (char**)malloc(sizeof(char*));
+    cands = (char**)xxmalloc(sizeof(char*));
     if(!cands) {
       lua_pop(L, 1);
       return NULL;
@@ -281,7 +282,7 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
   }
 
   // allocate memory for array
-  cands = (char**)malloc((size+1)*sizeof(char*));
+  cands = (char**)xxmalloc((size+1)*sizeof(char*));
   if(!cands) {
     lua_pop(L, 1);
     return NULL;
@@ -308,10 +309,10 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
 
     // cands[i] <- $prefix + $name
     len_keyname = strlen(keyname);
-    cands[i] = (char*)malloc((len_prefix+len_keyname+1)*sizeof(char*));
+    cands[i] = (char*)xxmalloc((len_prefix+len_keyname+1)*sizeof(char*));
     if(!cands[i]) {
       lua_pop(L, 4);
-      xfree_array(cands);
+      xxfree_array(cands);
       return NULL;
     }
     strncpy(cands[i],            prefix,  len_prefix);
@@ -345,23 +346,29 @@ int is_key_string(lua_State *L) {
   return 0;
 }
 
+// malloc $size memory
+void* xxmalloc(size_t size) {
+  void* p = malloc(size);
+  return p;
+}
+
 // free $obj
-void xfree(void *obj) {
-  if(obj) {
-    free(obj);
+void xxfree(void *p) {
+  if(p) {
+    free(p);
   }
   return;
 }
 
 // free $array and its elements
-void xfree_array(char **array) {
+void xxfree_array(char **array) {
   char **p = array;
   if(array) {
     while(*array) {
-      xfree(*array);
+      xxfree(*array);
       array++;
     }
-    xfree(p);
+    xxfree(p);
   }
   return;
 }
