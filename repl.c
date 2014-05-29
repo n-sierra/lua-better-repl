@@ -8,6 +8,9 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+//#define PRINT_WHEN_MALLOC
+//#define PRINT_WHEN_FREE
+
 lua_State *g_state;
 char **g_cands;
 int g_quit;
@@ -24,6 +27,8 @@ char* repl_match_generator(const char* text, int state);
 char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*));
 int is_key_string(lua_State *L);
 
+char* xxreadline(const char *prompt);
+char* xxstrdup(const char *s);
 void* xxmalloc(size_t size);
 void xxfree(void *p);
 void xxfree_array(char **array);
@@ -61,7 +66,11 @@ int main(int argc, char **argv) {
 
   while(g_quit == 0) {
     // read
-    line = readline("lua> ");
+    line = xxreadline("lua> ");
+    if(!line) {
+      // EOF
+      g_quit = 1;
+    }
 
     // eval
     eval(L, line);
@@ -197,11 +206,11 @@ char** repl_completion(const char *text, int start, int end) {
     g_cands = make_cands(L, "", NULL);
   } else {
     // string keys in table
-    tablename = strdup(text);
+    tablename = xxstrdup(text);
     if(!tablename) goto err;
     p = strchr(tablename, '.');
     *p = '\0';
-    prefix = strdup(text);
+    prefix = xxstrdup(text);
     if(!prefix) { xxfree(tablename); goto err; }
     p = strchr(prefix, '.');
     *(p+1) = '\0';
@@ -220,7 +229,6 @@ err:
   rl_attempted_completion_over = 1;
   // nothing append after completion
   rl_completion_append_character = '\0';
-
   return matches;
 }
 
@@ -239,7 +247,7 @@ char* repl_match_generator(const char *text, int state) {
     index++;
     // $text is prefix of $name ?
     if(strncmp(name, text, len) == 0) {
-      return strdup(name);
+      return xxstrdup(name);
     }
   }
 
@@ -346,15 +354,41 @@ int is_key_string(lua_State *L) {
   return 0;
 }
 
-// malloc $size memory
-void* xxmalloc(size_t size) {
-  void* p = malloc(size);
+// readline with printout
+char* xxreadline(const char *prompt) {
+  char *p = readline(prompt);
+  if(p) {
+#ifdef PRINT_WHEN_MALLOC
+    printf("[malloc] %p\n", p);
+#endif
+  }
   return p;
 }
 
-// free $obj
+// strdup with printout
+char* xxstrdup(const char *s) {
+  char *p = strdup(s);
+#ifdef PRINT_WHEN_MALLOC
+  printf("[malloc] %p\n", p);
+#endif
+  return p;
+}
+
+// malloc with printout
+void* xxmalloc(size_t size) {
+  void* p = malloc(size);
+#ifdef PRINT_WHEN_MALLOC
+  printf("[malloc] %p\n", p);
+#endif
+  return p;
+}
+
+// free with printout
 void xxfree(void *p) {
   if(p) {
+#ifdef PRINT_WHEN_FREE
+    printf("[free  ] %p\n", p);
+#endif
     free(p);
   }
   return;
