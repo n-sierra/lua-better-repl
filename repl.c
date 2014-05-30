@@ -284,9 +284,7 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
   lua_pushnil(L);
   while(lua_next(L, -2) != 0) {
     size++;
-    // dupe key
-    lua_pushvalue(L, -2);
-    lua_pop(L, 2);
+    lua_pop(L, 1);
   }
 
   // allocate memory for array
