@@ -115,10 +115,13 @@ void eval(lua_State *L, const char* code) {
       if(luaL_loadstring(L, p)) {
         // stack[top]    <new error>
         // stack[top-1]  <old error>
-        lua_pop(L, 1);
+        lua_pop(L, -1); // remove the old error
         error_load = 1;
       } else {
-        lua_remove(L, -2); // remove the first error
+        // stack[top]  <first return>
+        // stack[...]  <last returns>
+        // stack[1]    <old error>
+        lua_remove(L, 1); // remove the error
       }
       xxfree(p);
     }
@@ -333,8 +336,8 @@ char** make_cands(lua_State *L, const char *prefix, int (*filter)(lua_State*)) {
   // the last element
   cands[i] = NULL;
 
-  // pop the last key and an input
-  lua_pop(L, 2);
+  // pop the input
+  lua_pop(L, 1);
 
   return cands;
 }
