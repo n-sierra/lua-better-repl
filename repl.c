@@ -107,7 +107,7 @@ void eval(lua_State *L, const char* code) {
     p = (char*)xxmalloc(strlen(code)*sizeof(char)+sizeof("return "));
     if(!p) {
       lua_pop(L, 1); // pop error reason
-      lua_pushstring(L, "memory allocate error"); // new error reason
+      lua_pushstring(L, "failed at memory allocation"); // new error reason
       error_load = 1;
     } else {
       sprintf(p, "return %s", code);
