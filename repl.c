@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
   // initial setting for gnu readline
   rl_readline_name = "lua-better-repl";
-  rl_basic_word_break_characters = " \t\n\"+-*/^%><=|;,{(#";
+  rl_basic_word_break_characters = " \t\n\"+-*/^%%><=|;,{(#";
   rl_attempted_completion_function = repl_completion;
 
   // initialize global variables
