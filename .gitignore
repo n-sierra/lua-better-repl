@@ -4,5 +4,7 @@ tags
 
 *.o
 *.out
+*.d
 
-repl
+obj/*
+bin/*
