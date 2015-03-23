@@ -6,7 +6,6 @@ lua-better-repl is a repl for lua, which is a bit better than default one.
 
     % make
     % ./bin/lua-better-repl
-    % lua repl.lua
     lua> print("Hello, world!")
     Hello, world!
     lua> quit()
